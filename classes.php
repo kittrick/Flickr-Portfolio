@@ -53,30 +53,31 @@ class FGP {
 		$nonce .= $this->salt();
 		
 		/* Returns our nonce */
-		return $nonce;
+		return md5($nonce);
 	}
 	
 	/* Builds an OAuth login url */
 	function loginURL($returnURL){
 		
 		/* Create a Key */
-		$key = $this->api_key.'&'.$this->secret;
+		$hashkey = $this->secret.'&';
+		
+		/* Start URL */
+		$url = 'http://www.flickr.com/services/oauth/request_token?';
 		
 		/* Build URL */
-		$url = 'http://www.flickr.com/services/oauth/request_token';
-		$url .= '?oauth_callback='.$returnURL;
-		$url .= '&oauth_consumer_key='.$key;
-		$url .= '&oauth_nonce='.$this->nonce('loginURL');
-		$url .= '&oauth_signature_method=HMAC-SHA1';
-		$url .= '&oauth_timestamp='.time();
-		$url .= '&oauth_version=1.0';
-
+		$baseString = 'GET&'.urlencode($url).'&';
+		$baseString .= $url .= 'oauth_callback='.urlencode($returnURL);
+		$baseString .= $url .= '&oauth_consumer_key='.$this->api_key;
+		$baseString .= $url .= '&oauth_nonce='.$this->nonce('loginURL');
+		$baseString .= $url .= '&oauth_signature_method=HMAC-SHA1';
+		$baseString	.= $url .= '&oauth_timestamp='.time();
+		$baseString .= $url .= '&oauth_version=1.0';
 		
-		/* Add a signature to the URL */
-		$signature = 'GET'.urlencode($url);
-		$signature = hash_hmac('sha1',$signature,$key);
+		/* Encode Signature */
+		$signature = base64_encode(hash_hmac('sha1', $baseString, $hashkey, true));
 		
-		$url .= '&oauth_signature='.$signature;
+		$url .= '&oauth_signature='.urlencode($signature);
 		
 		/* Returns our Login URL */
 		return $url;
@@ -806,31 +807,6 @@ class FGP {
 		return $output;
 	}
 }
-
-//==============================
-//! These are helper functions
-//==============================
-
-/* Get current page URL */	
-function currentPageURL() {
-
-	/* Start URL */
-	$pageURL = 'http';
-	
-	/* Check for HTTPS */
-	if ($_SERVER["HTTPS"] == "on") {$pageURL .= "s";}
-
-	/* Build URL */
-	$pageURL .= "://";
-	if ($_SERVER["SERVER_PORT"] != "80") {
-		$pageURL .= $_SERVER["SERVER_NAME"].":".$_SERVER["SERVER_PORT"].$_SERVER["REQUEST_URI"];
-	} else {
-		$pageURL .= $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"];
-	}
-	
-	/* Return URL */
-	return $pageURL;
-}	
 
 //========================================
 //! Initialize FGP class and away we go!

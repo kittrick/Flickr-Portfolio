@@ -12,6 +12,6 @@
 		<![endif]-->
 	</head>
 	<body>
-		<p>Click <a href="<?php $fgp->loginURL(currentPageURL()); ?>">here</a> to log in to Flickr.</p>
+		<p>Click <a href="<?php echo $fgp->loginURL('http://'.$_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"]); ?>" target="_blank">here</a> to log in to Flickr.</p>
 	</body>
 </html>
