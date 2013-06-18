@@ -7,35 +7,91 @@
 
 class FGP {
 
-//=============================
-//! Global vars and user data
-//=============================
-
 	/* Userdata for Flickr API */
-	private $user = '64006219@N00'; // this is your flickr id ex: 64006219@N00 // Get yours Here: http://idgettr.com/
-	private $api_key = '8da0a1fabcad1737a973057c1853d773'; // insert your flickr API key (or use this one)
-	public $siteDescription = ""; // add a subtitle for your site.
-
-
-
-
-
-
-
-
-//=========================================
-//! DO NOT EDIT ANYTHING BELOW THIS POINT
-//  UNLESS YOU ARE COMFORTABLE WITH PHP
-//=========================================
+	public $user = '64006219@N00'; // this is your flickr id ex: 64006219@N00 // Get yours Here: http://idgettr.com/
+	public $api_key = '8da0a1fabcad1737a973057c1853d773'; // insert your flickr API key (or use this one);
+	public $secret = '524c05a417ee4026';
 
 	/* Used by Google Crawler */
 	public $escapeFragment = '_escaped_fragment_';
 	
 	/* Blank vars used for Sidebar and Page Title and Description */
+	public $siteDescription = '';
 	public $contentDescription = '';
 	public $pageDescription = '';
 	public $tags = '';
 	public $sidebarNav = '';
+	
+//=======================================================
+//! These functions deal with user Authentication
+//=======================================================
+	
+	/* Generates a salt for use in authentication */
+	function salt(){
+	
+		/* Basically making something as random as possible */
+		$salt = time();
+		$salt = str_split($salt);
+		foreach($salt as $grain){
+			$saltArray[] = md5($grain);
+		}
+		$salt = implode(rand(0,255),$saltArray);
+		$salt = md5($salt);
+		
+		/* Returns the Salt */
+		return $salt;
+	}
+	
+	/* Creates a nonce for authentication pages */
+	function nonce($method){
+
+		/* Starting our nonce */
+		$nonce = $method;
+		$nonce .= 'FGP';
+		$nonce .= $this->user;
+		$nonce .= time();
+		$nonce .= $this->salt();
+		
+		/* Returns our nonce */
+		return $nonce;
+	}
+	
+	/* Builds an OAuth login url */
+	function loginURL($returnURL){
+		
+		/* Build URL */
+		$url = 'http://www.flickr.com/services/oauth/request_token';
+		$url .= '?oauth_nonce='.$this->nonce('loginURL');
+		$url .= '&oauth_timestamp='.time();
+		$url .= '&oauth_consumer_key='.$this->api_key;
+		$url .= '&oauth_signature_method=HMAC-SHA1';
+		$url .= '&oauth_version=1.0';
+		$url .= '&oauth_callback='.$returnURL;
+		
+		/* Returns our Login URL */
+		return $url;
+	}
+	
+//	function getToken($frob, $method){
+//		
+//		/* Build a token signature */
+//		$signature = $this->secret.'api_key'.this->api_key.'frob'.$frob.'methodflickr.'.$method;
+//		$signature = md5($signature);
+//		
+//		$token = $this->askFlickr($method, '');
+//		
+//		return $token;
+//	}
+//
+//	function signature(){
+//	
+//		/* Building a nice signature based on this page: http://www.flickr.com/services/api/auth.howto.web.html */
+//		$signature = $this->secret.'api_key'.$this->api_key.'permsread';
+//		$signature = md5($signature);
+//		
+//		/* Return a Signature */
+//		return $signature;
+//	}
 
 //==============================================
 //! AskFlickr handles CURL requests to Flickr
@@ -111,15 +167,9 @@ class FGP {
 			/* About Page */
 			$output .= $this->printUserInfo();
 
-		} elseif( isset($_GET['collections'])){
-
-			/* Collections Page, Maybe Home Page Soon */
-			$output .= $this->printCollections();
-
 		} else { // Same as elseif( isset($_GET['home']
 
-			/* Default to Home Page */
-			$output .= $this->printSets();
+			$output .= $this->printCollection() ? $this->printCollection() : $this->printSets();
 		}
 		return $output;
 	}
@@ -269,6 +319,37 @@ class FGP {
 //  flickr and turn them into PHP objects
 //=========================================
 	
+	/* Returns a collection based on the search parameter collection */
+	function getCollection($collection_id){
+		
+		/* Fetch collection tree from Flickr */
+		$collection = $this->askFlickr('collections.getInfo','&collection_id='.$collection_id);
+		
+		/* Ask Flickr For User Collections */
+		return $collection;
+	}
+	
+	/* Returns a collection based on the search parameter collection */
+	function getCollectionTree($search = 'website'){
+		
+		/* Fetch collection tree from Flickr */
+		$collectionTree = $this->askFlickr('collections.getTree','&user_id='.$this->user);
+		
+		/* This will be false if no collection called website is found */
+		$websiteCollection = false;
+		
+		/* Search for the specified string */
+		foreach($collectionTree->collections->collection as $collection){
+		
+			if(strtolower($collection->title) == $search) {
+				$websiteCollection = $collection;
+			}
+		}
+		
+		/* Ask Flickr For User Collections */
+		return $websiteCollection;
+	}
+	
 	/* Returns a Single Photo Object */
 	function getPhoto($photo_id, $secret){
 
@@ -318,16 +399,6 @@ class FGP {
 		/* Return Photo Sizes */
 		return $photoSizes;
 	}
-
-	/* Get Collection Tree for User */
-	function getCollectionTree(){
-		
-		/* Fetch collection tree from Flickr */
-		$collectionTree = $this->askFlickr('collections.getTree','user_id='.$this->user);
-		
-		/* Ask Flickr For User Collections */
-		return $collectionTree;
-	}
 	
 	/* Search Flickr, also used for recent */
 	function getSearch($search, $page, $per_page = 32 , $tag = false){
@@ -349,6 +420,16 @@ class FGP {
 		return $search;
 	}
 	
+	/* Get a Single Set's Info */
+	function getSet($set_id){
+		
+		/* Get Set */
+		$set = $this->askFlickr('photosets.getInfo','&photoset_id='.$set_id);
+		
+		/* Return Set */
+		return $set;
+	}
+	
 	/* Fetch Flickr sets for user */
 	function getSets($user){
 
@@ -363,7 +444,7 @@ class FGP {
 	function getTags($photo_id){
 
 		/* Fetch user info from Flickr */
-		$tags = $this->askFlickr('tags.getListPhoto','user_id='.$this->user.'&photo_id='.$photo_id);
+		$tags = $this->askFlickr('tags.getListPhoto','&user_id='.$this->user.'&photo_id='.$photo_id);
 
 		/* Return Tags */
 		return $tags;
@@ -373,7 +454,7 @@ class FGP {
 	function getUserInfo(){
 
 		/* Fetch user info from Flickr */
-		$user = $this->askFlickr('people.getinfo','user_id='.$this->user);
+		$user = $this->askFlickr('people.getinfo','&user_id='.$this->user);
 
 		/* Return User info */
 		return $user;
@@ -383,7 +464,7 @@ class FGP {
 	function getUserTags(){
 
 		/* Fetch user info from Flickr */
-		$tags = $this->askFlickr('tags.getListUserPopular','user_id='.$this->user);
+		$tags = $this->askFlickr('tags.getListUserPopular','&user_id='.$this->user);
 
 		/* Return Tags */
 		return $tags;
@@ -395,8 +476,39 @@ class FGP {
 //============================================
 	
 	/* HTML Format Collection Tree */
-	function printCollectionTree(){
+	function printCollection(){
+		
+		/* Return False if no Collection Exists */
+		if($this->getCollectionTree() == false){
+			return false;
+		}
+		
+		/* set collection var */
+		$collection = $this->getCollectionTree();
+		
+		/* Check to see if this is a collection of sets or a collection of collections */
+		if(isset($collection->set)){
+			
+			$collection = $this->getCollection($collection->id);
+			
+			ob_start();
+			var_dump($collection);
+			$output  = ob_get_clean();
+			return $output;
+		
+			/* set iterator */
+			$i = 0;
 
+			foreach($collection->set as $set){	
+				$photoset = $this->getSet($set->id);
+				$setInfo[] = $photoset->photoset;
+			}
+			
+			/* Create an object that mimics getSets() */
+			$collection_object->photosets->photoset = $setInfo;
+			$output = $this->printSets($packery = true, $size = 'q', $collection_object);
+		}
+				
 		/* Return HTML */
 		return $output;
 	}
@@ -554,10 +666,10 @@ class FGP {
 	}
 
 	/* HTML format Flickr Sets */
-	function printSets($packery = true, $size = 'q'){ // This one has different formatting
+	function printSets($packery = true, $size = 'q', $collection_object = false){ // This one has different formatting
 
-		/* Gets Sets for User */
-		$sets = $this->getSets($this->user);
+		/* Gets sets for user or prints a collection object */
+		$sets = $collection_object ? $collection_object : $this->getSets($this->user);
 
 		/* Generate output */
 		$packery ? $packery = 'packery' : $packery = '';
@@ -684,6 +796,31 @@ class FGP {
 		return $output;
 	}
 }
+
+//==============================
+//! These are helper functions
+//==============================
+
+/* Get current page URL */	
+function currentPageURL() {
+
+	/* Start URL */
+	$pageURL = 'http';
+	
+	/* Check for HTTPS */
+	if ($_SERVER["HTTPS"] == "on") {$pageURL .= "s";}
+
+	/* Build URL */
+	$pageURL .= "://";
+	if ($_SERVER["SERVER_PORT"] != "80") {
+		$pageURL .= $_SERVER["SERVER_NAME"].":".$_SERVER["SERVER_PORT"].$_SERVER["REQUEST_URI"];
+	} else {
+		$pageURL .= $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"];
+	}
+	
+	/* Return URL */
+	return $pageURL;
+}	
 
 //========================================
 //! Initialize FGP class and away we go!
