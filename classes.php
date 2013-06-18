@@ -59,14 +59,24 @@ class FGP {
 	/* Builds an OAuth login url */
 	function loginURL($returnURL){
 		
+		/* Create a Key */
+		$key = $this->api_key.'&'.$this->secret;
+		
 		/* Build URL */
 		$url = 'http://www.flickr.com/services/oauth/request_token';
-		$url .= '?oauth_nonce='.$this->nonce('loginURL');
-		$url .= '&oauth_timestamp='.time();
-		$url .= '&oauth_consumer_key='.$this->api_key;
+		$url .= '?oauth_callback='.$returnURL;
+		$url .= '&oauth_consumer_key='.$key;
+		$url .= '&oauth_nonce='.$this->nonce('loginURL');
 		$url .= '&oauth_signature_method=HMAC-SHA1';
+		$url .= '&oauth_timestamp='.time();
 		$url .= '&oauth_version=1.0';
-		$url .= '&oauth_callback='.$returnURL;
+
+		
+		/* Add a signature to the URL */
+		$signature = 'GET'.urlencode($url);
+		$signature = hash_hmac('sha1',$signature,$key);
+		
+		$url .= '&oauth_signature='.$signature;
 		
 		/* Returns our Login URL */
 		return $url;
