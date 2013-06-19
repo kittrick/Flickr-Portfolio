@@ -26,83 +26,40 @@ class FGP {
 //! These functions deal with user Authentication
 //=======================================================
 	
-	/* Generates a salt for use in authentication */
-	function salt(){
-	
-		/* Basically making something as random as possible */
-		$salt = time();
-		$salt = str_split($salt);
-		foreach($salt as $grain){
-			$saltArray[] = md5($grain);
-		}
-		$salt = implode(rand(0,255),$saltArray);
-		$salt = md5($salt);
-		
-		/* Returns the Salt */
-		return $salt;
-	}
-	
-	/* Creates a nonce for authentication pages */
-	function nonce($method){
-
-		/* Starting our nonce */
-		$nonce = $method;
-		$nonce .= 'FGP';
-		$nonce .= $this->user;
-		$nonce .= time();
-		$nonce .= $this->salt();
-		
-		/* Returns our nonce */
-		return md5($nonce);
-	}
-	
-	/* Builds an OAuth login url */
+	/* Builds an OAuth login URL */
 	function loginURL($returnURL){
 		
-		/* Create a Key */
+		/* Start with the request token URL */
+		$request_token_url = 'http://www.flickr.com/services/oauth/request_token';
+		
+		/* Create a hash key */
 		$hashkey = $this->secret.'&';
 		
-		/* Start URL */
-		$url = 'http://www.flickr.com/services/oauth/request_token?';
+		/* Build an array of OAuth values, must be in alphabetical order */
+		$oauth_values = array(
+			'oauth_callback' => urlencode($returnURL),
+			'oauth_consumer_key' => $this->api_key,
+			'oauth_nonce' => md5('FGP'.$this->user.microtime().mt_rand()),
+			'oauth_signature_method' => 'HMAC-SHA1',
+			'oauth_timestamp' => gmdate('U'), // Must be UTC time
+			'oauth_version' => '1.0'
+		);
 		
-		/* Build URL */
-		$baseString = 'GET&'.urlencode($url).'&';
-		$baseString .= $url .= 'oauth_callback='.urlencode($returnURL);
-		$baseString .= $url .= '&oauth_consumer_key='.$this->api_key;
-		$baseString .= $url .= '&oauth_nonce='.$this->nonce('loginURL');
-		$baseString .= $url .= '&oauth_signature_method=HMAC-SHA1';
-		$baseString	.= $url .= '&oauth_timestamp='.time();
-		$baseString .= $url .= '&oauth_version=1.0';
+		/* Create a basestring */
+		$basestring = '';
+		foreach($oauth_values as $key => $value) $basestring .= $key.'='.urlencode($value).'&';
+		$basestring = rtrim($basestring,'&');
 		
-		/* Encode Signature */
-		$signature = base64_encode(hash_hmac('sha1', $baseString, $hashkey, true));
+		/* Create a baseurl */
+		$baseurl = 'GET&'.urlencode($request_token_url).'&'.urlencode($basestring);
 		
-		$url .= '&oauth_signature='.urlencode($signature);
+		/* Create a signature */
+		$oauth_signature = base64_encode(hash_hmac('sha1', $baseurl, $hashkey, true));
 		
-		/* Returns our Login URL */
+		/* Create a url */
+		$url = $request_token_url.'?'.$basestring.'&oauth_signature='.urlencode($oauth_signature);
 		return $url;
 	}
-	
-//	function getToken($frob, $method){
-//		
-//		/* Build a token signature */
-//		$signature = $this->secret.'api_key'.this->api_key.'frob'.$frob.'methodflickr.'.$method;
-//		$signature = md5($signature);
-//		
-//		$token = $this->askFlickr($method, '');
-//		
-//		return $token;
-//	}
-//
-//	function signature(){
-//	
-//		/* Building a nice signature based on this page: http://www.flickr.com/services/api/auth.howto.web.html */
-//		$signature = $this->secret.'api_key'.$this->api_key.'permsread';
-//		$signature = md5($signature);
-//		
-//		/* Return a Signature */
-//		return $signature;
-//	}
 
 //==============================================
 //! AskFlickr handles CURL requests to Flickr

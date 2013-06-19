@@ -1,4 +1,12 @@
-<?php include '../classes.php'; $fgp = new FGP; ?>
+<?php
+
+/* Error Reporting */
+	ini_set("display_errors", 1);
+	error_reporting(E_ALL);
+	
+	include '../classes.php';
+	$fgp = new FGP;
+?>
 <!doctype html>
 <html lang="en-us">
 	<head>
