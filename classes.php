@@ -141,11 +141,6 @@ class FGP {
 		}
 		return $output;
 	}
-	
-	/* Print Content loaded by loadContent */
-	function printContent($input){
-		echo $input;
-	}
 
 //=================================================
 //! Additional functions either set global vars

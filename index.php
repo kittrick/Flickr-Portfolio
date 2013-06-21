@@ -17,7 +17,7 @@
 	$fgp->fragmentCheck();
 	
 	/* Load content into $output var */
-	$output = $fgp->loadContent();
+	$page = $fgp->loadContent();
 ?>
 <?php include 'head.php'; ?>
 <div id="container">
@@ -41,7 +41,7 @@
 	<div id="content">
 		<?
 		/* Print page content */
-		$fgp->printContent($output);
+		echo $page;
 		?>
 	</div>
 </div>
